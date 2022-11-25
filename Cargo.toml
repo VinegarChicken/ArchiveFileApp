@@ -1,0 +1,12 @@
+[package]
+name = "ArchiveFile"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+zip = { version = "0.6.3"}
+cxx = "1.0.82"
+
+
+[lib]
+crate-type = ["cdylib"]
