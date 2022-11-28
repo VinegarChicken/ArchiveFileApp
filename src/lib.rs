@@ -26,7 +26,7 @@ struct CppResult{
     val: *mut *mut ()
 }
 #[repr(C)]
-struct ArrayStruct{
+struct CppArray{
     ptr: *mut *mut (),
     size: usize,
     cap: usize
@@ -66,15 +66,15 @@ impl ZipFileArchive{
             }
         }
     }
-    fn extract(&mut self, id: usize, out_dir: *mut c_char, single_file: bool) -> CppResult{ 
+    fn extract(&mut self, index: usize, out_dir: *mut c_char, single_file: bool) -> CppResult{ 
         unsafe{
             let mut zipf = &mut self.zipfile;
             let out_path = PathBuf::from(CStr::from_ptr(out_dir).to_str().unwrap().to_string().replace("/", "\\"));
             let mut is_dir = false;
-            let mut num = id;
+            let mut num = index;
                 while !is_dir{
                     let mut file = zipf.by_index(num).unwrap();
-                    if file.is_dir() && num == id{
+                    if file.is_dir() && num == index{
                         if single_file{
                             break;
                         }
@@ -92,7 +92,6 @@ impl ZipFileArchive{
                 }
         }
     }
-
     fn extract_all(&mut self, out_dir: *mut c_char) -> CppResult{
         unsafe{
             let mut zipf = &mut self.zipfile;
@@ -103,7 +102,22 @@ impl ZipFileArchive{
             CppResult { isErr: false, val: 0 as *mut *mut () }
         }
     }
-    fn list_all(&mut self) -> ArrayStruct{
+    fn list_files_in_dir(&mut self, index: usize) -> CppArray{
+        let mut zipf = &mut self.zipfile;
+        let mut is_dir = false;
+        let mut num = index + 1;
+        let mut files = Vec::new();
+            while !is_dir{
+                let mut file = zipf.by_index(num).unwrap();
+                let name = CString::new(file.mangled_name().file_name().unwrap().to_str().unwrap()).unwrap().into_raw();
+                files.push(name);
+                num+=1;
+                is_dir = file.is_dir();
+            }
+            let mut parts = files.into_raw_parts();
+            CppArray { ptr: parts.0 as *mut *mut (), size: parts.1, cap: parts.2 }
+    }
+    fn list_all(&mut self) -> CppArray{
         let mut zipf = &mut self.zipfile;
         let mut list = Vec::new();
         for i in 0..zipf.len(){
@@ -112,7 +126,7 @@ impl ZipFileArchive{
             list.push(name.into_raw());
         }
         let mut parts = list.into_raw_parts();
-        ArrayStruct { ptr: parts.0 as *mut *mut (), size: parts.1, cap: parts.2 }
+        CppArray { ptr: parts.0 as *mut *mut (), size: parts.1, cap: parts.2 }
     }
 
 }
@@ -124,7 +138,12 @@ unsafe extern "C" fn zfa_new(path: *const c_char) -> CppResult{
 }
 
 #[no_mangle]
-unsafe extern "C" fn zfa_listall(zfa: *mut ZipFileArchive) -> ArrayStruct{
+unsafe extern "C" fn zfa_list_files_in_dir(zfa: *mut ZipFileArchive, index: usize) -> CppArray{
+    (*zfa).list_files_in_dir(index)
+}
+
+#[no_mangle]
+unsafe extern "C" fn zfa_listall(zfa: *mut ZipFileArchive) -> CppArray{
     (*zfa).list_all()
 }
 

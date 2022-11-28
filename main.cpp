@@ -7,11 +7,12 @@ struct CppResult{
     void* val;
 };
 
-struct ArrayStuct{
+struct CppArray{
     void** ptr;
     size_t size;
     size_t cap;
 };
+//WxWidgets dir examples: test/streams: 8836, test/benchmarks: 8861
 
 struct ZipFileArchive{
 
@@ -20,8 +21,8 @@ struct ZipFileArchive{
 extern "C" CppResult zfa_new(const char*);
 extern "C" CppResult zfa_extract(ZipFileArchive*, size_t, char**, bool);
 extern "C" CppResult zfa_extract_all(ZipFileArchive*, char**);
-extern "C" ArrayStuct zfa_listall(ZipFileArchive*);
-
+extern "C" CppArray zfa_listall(ZipFileArchive*);
+extern "C" CppArray zfa_list_files_in_dir(ZipFileArchive*, size_t);
 
 int main(int args, char** argv){
     CppResult zfa_ = zfa_new(argv[1]);
@@ -35,8 +36,13 @@ int main(int args, char** argv){
   /*
   
   */
- zfa_extract(zfa, 8932, &path, false);
-  ArrayStuct list = zfa_listall(zfa);
+  CppArray ListDir = zfa_list_files_in_dir(zfa, 8861);
+  char** arr = (char**) ListDir.ptr;
+  for(int i=0;i<ListDir.size;i++){
+    std::cout<<arr[i]<<std::endl;
+  }
+ /*
+ ArrayStuct list = zfa_listall(zfa);
   std::map<int, char*> ZfaMap;
   std::map<int, char*>::iterator itr;
     char** arr = (char**) list.ptr;
@@ -46,6 +52,8 @@ int main(int args, char** argv){
     for(itr=ZfaMap.begin();itr!=ZfaMap.end();itr++){
         std::cout<<itr->first<<" "<<itr->second<<std::endl;
     }
+ */
+  
   
     
     return 0;
