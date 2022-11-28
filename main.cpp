@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <map>
 
 struct CppResult{
     bool isErr;
@@ -17,16 +18,36 @@ struct ZipFileArchive{
 };
 
 extern "C" CppResult zfa_new(const char*);
+extern "C" CppResult zfa_extract(ZipFileArchive*, size_t, char**, bool);
+extern "C" CppResult zfa_extract_all(ZipFileArchive*, char**);
 extern "C" ArrayStuct zfa_listall(ZipFileArchive*);
 
 
 int main(int args, char** argv){
-    ZipFileArchive* zfa = (ZipFileArchive*) zfa_new(argv[1]).val;
-    ArrayStuct list = zfa_listall(zfa);
+    CppResult zfa_ = zfa_new(argv[1]);
+    if(zfa_.isErr){
+        std::cout<<(const char*) zfa_.val;
+    }
+   ZipFileArchive* zfa = (ZipFileArchive*) zfa_.val;
+    char* path = "C:\\Users\\m\\Downloads\\ryujinxggfgggdg";
+    //CppResult res = zfa_extract_all(zfa, &path);
+    //std::cout<<(char*) res.val;
+  /*
+  
+  */
+ zfa_extract(zfa, 8932, &path, false);
+  ArrayStuct list = zfa_listall(zfa);
+  std::map<int, char*> ZfaMap;
+  std::map<int, char*>::iterator itr;
     char** arr = (char**) list.ptr;
     for(int i=0;i<list.size;i++){
-        std::cout<<arr[i]<<std::endl;
+        ZfaMap.insert(std::pair<int, char*>(i, arr[i]));
     }
+    for(itr=ZfaMap.begin();itr!=ZfaMap.end();itr++){
+        std::cout<<itr->first<<" "<<itr->second<<std::endl;
+    }
+  
+    
     return 0;
 }
 

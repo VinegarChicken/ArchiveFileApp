@@ -15,9 +15,6 @@ use std::io;
 use std::io::{Cursor, Read};
 use zip::result::ZipResult;
 
-static mut extract: bool = false;
-static mut out_path: String =  String::new();
-
 
 struct ZipFileArchive{
     zipfile: zip::ZipArchive<File>
@@ -26,7 +23,7 @@ struct ZipFileArchive{
 #[repr(C)]
 struct CppResult{
     isErr: bool,
-    val: *mut ()
+    val: *mut *mut ()
 }
 #[repr(C)]
 struct ArrayStruct{
@@ -34,9 +31,24 @@ struct ArrayStruct{
     size: usize,
     cap: usize
 }
+
+unsafe fn extract_file(file: &mut ZipFile, out_path: PathBuf) -> String{
+    let mut data = Vec::new();
+    file.read_to_end(&mut data);
+    if let Err(e) = std::fs::write(out_path.clone(), data){
+        return format!("Failed to write {} With error: {}", out_path.clone().to_str().unwrap(), e.to_string())
+    }
+    format!("Wrote {}", out_path.clone().to_str().unwrap())
+}
 impl ZipFileArchive{
     unsafe fn new(path: String) -> CppResult {
         let mut f = File::open(path.clone());
+        if let Err(e) = f{
+            return CppResult{
+                isErr: true,
+                val: CString::new(e.to_string()).unwrap().into_raw() as *mut *mut ()
+            }
+        }
         let mut f = f.unwrap();
         let mut zip = zip::ZipArchive::new(f);
         if let Ok(z) = zip {
@@ -44,57 +56,51 @@ impl ZipFileArchive{
             let ptr = Box::into_raw(x) as *mut ();
             return CppResult{
                 isErr: false,
-                val: ptr
+                val: ptr as *mut *mut ()
             }
         }
         else{
             return CppResult{
                 isErr: true,
-                val: 0 as *mut ()
+                val: CString::new(zip.unwrap_err().to_string()).unwrap().into_raw() as *mut *mut ()
             }
         }
     }
-    fn extract_folder(&mut self, directory: *mut c_char) -> io::Result<u32>{ 
+    fn extract(&mut self, id: usize, out_dir: *mut c_char, single_file: bool) -> CppResult{ 
         unsafe{
             let mut zipf = &mut self.zipfile;
-            let mut i = 0;
-            let mut file = zipf.by_index(i).unwrap();
-            let dir_path = PathBuf::from(CString::from_raw(directory).to_str().unwrap().to_string());
-                let mut is_dir = false;
-                if let Err(e) = std::fs::create_dir_all(dir_path.join(file.name().replace("/", "\\"))){
-                    return Err(e)
-                }
+            let out_path = PathBuf::from(CStr::from_ptr(out_dir).to_str().unwrap().to_string().replace("/", "\\"));
+            let mut is_dir = false;
+            let mut num = id;
                 while !is_dir{
-                    let path = dir_path.join(file.name().replace("/", "\\"));
-                    let mut vec = Vec::new();
-                    file.read_to_end(&mut vec);
-                    std::fs::write(path, vec);
-                    i+=1;
+                    let mut file = zipf.by_index(num).unwrap();
+                    if file.is_dir() && num == id{
+                        if single_file{
+                            break;
+                        }
+                        num+=1;
+                        continue;
+                    }        
+                    let path = out_path.join(file.mangled_name().file_name().unwrap());
+                    extract_file(&mut file, path);
+                    num+=1;
                     is_dir = file.is_dir();
                 }
-            
-            Ok(0)
+                CppResult{
+                    isErr: false,
+                    val: CString::new(out_path.to_str().unwrap()).unwrap().into_raw() as *mut *mut ()
+                }
         }
-
     }
-    fn extract_all(&mut self, out_dir: *mut c_char) -> io::Result<u32>{
+
+    fn extract_all(&mut self, out_dir: *mut c_char) -> CppResult{
         unsafe{
             let mut zipf = &mut self.zipfile;
-            let len = zipf.len();
-            let dir_path = PathBuf::from(CString::from_raw(out_dir).to_str().unwrap().to_string());
-            for i in 0..len {
-                let mut file = zipf.by_index(i as usize).unwrap();
-                let path = dir_path.join(file.name().replace("/", "\\"));
-                if file.is_dir(){
-                    std::fs::create_dir_all(dir_path.join(file.name().replace("/", "\\")));
-                }
-                else{
-                    let mut vec = Vec::new();
-                    file.read_to_end(&mut vec);
-                    std::fs::write(path, vec);
-                }
+            let dir_path = PathBuf::from(CStr::from_ptr(out_dir).to_str().unwrap().to_string());
+            if let Err(e) = zipf.extract(dir_path){
+                return CppResult { isErr: false, val: CString::new(e.to_string()).unwrap().into_raw() as *mut *mut ()}
             }
-            Ok(0)
+            CppResult { isErr: false, val: 0 as *mut *mut () }
         }
     }
     fn list_all(&mut self) -> ArrayStruct{
@@ -120,4 +126,14 @@ unsafe extern "C" fn zfa_new(path: *const c_char) -> CppResult{
 #[no_mangle]
 unsafe extern "C" fn zfa_listall(zfa: *mut ZipFileArchive) -> ArrayStruct{
     (*zfa).list_all()
+}
+
+#[no_mangle]
+unsafe extern "C" fn zfa_extract(zfa: *mut ZipFileArchive, file: usize, out_dir: *mut *mut c_char, single_file: bool) -> CppResult{
+    (*zfa).extract(file, *out_dir, single_file)
+}
+
+#[no_mangle]
+unsafe extern "C" fn zfa_extract_all(zfa: *mut ZipFileArchive, out_dir: *mut *mut c_char) -> CppResult{
+    (*zfa).extract_all(*out_dir)
 }
