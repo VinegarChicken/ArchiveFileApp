@@ -5,6 +5,7 @@
 #include <wx/listctrl.h>
 
 
+
 // wxWidgets "Hello World" Program
  
 // For compilers that support precompilation, includes "wx/wx.h".
@@ -30,7 +31,8 @@ private:
     void OnAbout(wxCommandEvent& event);
     void OnFileSelect(wxCommandEvent& ev);
     void OnFileUnSelect(wxCommandEvent& ev);
-    void OnFileClicked(wxMouseEvent& ev);
+    void OnFileClicked(wxCommandEvent& ev);
+    std::vector<long> getSelectedItems();
     bool isSelectedItem;
     wxListCtrl* listCtrl;
 
@@ -67,8 +69,8 @@ MyFrame::MyFrame()
      listCtrl->InsertItem(1, "Second");
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_SELECTED, wxCommandEventHandler(MyFrame::OnFileSelect), nullptr, this);
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxCommandEventHandler(MyFrame::OnFileUnSelect), nullptr, this);
-    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_LIST_ITEM_ACTIVATED, wxMouseEventHandler(MyFrame::OnFileClicked), nullptr, this);
-
+    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_LIST_ITEM_ACTIVATED, wxCommandEventHandler(MyFrame::OnFileClicked), nullptr, this);
+    
       //listCtrl->SetItem(0, 2, "5359");
      // listCtrl->SetItem(0, 3, "This is the first item");
 
@@ -95,18 +97,38 @@ void MyFrame::OnExit(wxCommandEvent& event)
 }
 void MyFrame::OnFileSelect(wxCommandEvent& ev){
     
+
 }
 
 void MyFrame::OnFileUnSelect(wxCommandEvent& ev){
     
+}
+
+std::vector<long> MyFrame::getSelectedItems(){
+     long item = -1;
+       std::vector<long> items;
+for ( ;; )
+{
+    item = listCtrl->GetNextItem(item,
+                                wxLIST_NEXT_ALL,
+                                wxLIST_STATE_SELECTED);
+    if ( item == -1 )
+        break;
+    items.push_back(item);
+    // this item is selected - do whatever is needed with it
+}
+return items;
 }
 void MyFrame::OnAbout(wxCommandEvent& event)
 {
     wxMessageBox("This is a wxWidgets Hello World example",
                  "About Hello World", wxOK | wxICON_INFORMATION);
 }
-void MyFrame::OnFileClicked(wxMouseEvent& ev){
-    std::cout<<"Item clicked";
+void MyFrame::OnFileClicked(wxCommandEvent& ev){
+    auto items = this->getSelectedItems();
+    for(auto& item:items){
+        std::cout<<item;
+    }
 }
 void MyFrame::OnHello(wxCommandEvent& event)
 {
