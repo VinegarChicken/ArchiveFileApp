@@ -29,8 +29,10 @@ private:
     void OnExit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
     void OnFileSelect(wxCommandEvent& ev);
+    void OnFileUnSelect(wxCommandEvent& ev);
     void OnFileClicked(wxMouseEvent& ev);
     bool isSelectedItem;
+    wxListCtrl* listCtrl;
 
 };
  
@@ -59,13 +61,13 @@ MyFrame::MyFrame()
     menuFile->Append(wxID_EXIT);
     wxPanel* panel = new wxPanel(this);
 
-    wxListCtrl* listCtrl = new wxListCtrl(panel, ID_ARCHIVELIST, {10, 10}, {330, 200}, wxLC_REPORT|wxSIMPLE_BORDER);
+    listCtrl = new wxListCtrl(panel, ID_ARCHIVELIST, {10, 10}, {330, 200}, wxLC_REPORT|wxSIMPLE_BORDER);
     listCtrl->AppendColumn("Name", wxLIST_FORMAT_LEFT, 80);
      listCtrl->InsertItem(0, "First");
      listCtrl->InsertItem(1, "Second");
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_SELECTED, wxCommandEventHandler(MyFrame::OnFileSelect), nullptr, this);
-    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxCommandEventHandler(MyFrame::OnFileSelect), nullptr, this);
-    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxMouseEventHandler(MyFrame::OnFileClicked), nullptr, this);
+    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxCommandEventHandler(MyFrame::OnFileUnSelect), nullptr, this);
+    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_LIST_ITEM_ACTIVATED, wxMouseEventHandler(MyFrame::OnFileClicked), nullptr, this);
 
       //listCtrl->SetItem(0, 2, "5359");
      // listCtrl->SetItem(0, 3, "This is the first item");
@@ -93,15 +95,10 @@ void MyFrame::OnExit(wxCommandEvent& event)
 }
 void MyFrame::OnFileSelect(wxCommandEvent& ev){
     
-    if(this->isSelectedItem){
-        this->isSelectedItem = false;
-    }
-    else{
-        this->isSelectedItem = true;
-    }
-    
+}
 
-    std::cout<<"[MyFrame::OnFileSelect] selected ! " + std::to_string(this->isSelectedItem)<<std::endl;
+void MyFrame::OnFileUnSelect(wxCommandEvent& ev){
+    
 }
 void MyFrame::OnAbout(wxCommandEvent& event)
 {
@@ -109,9 +106,7 @@ void MyFrame::OnAbout(wxCommandEvent& event)
                  "About Hello World", wxOK | wxICON_INFORMATION);
 }
 void MyFrame::OnFileClicked(wxMouseEvent& ev){
-    if(this->isSelectedItem){
-        std::cout<<"[MyFrame::OnFileClicked] Selected and Clicked !"<<std::endl;
-    }
+    std::cout<<"Item clicked";
 }
 void MyFrame::OnHello(wxCommandEvent& event)
 {
