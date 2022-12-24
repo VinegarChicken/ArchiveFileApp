@@ -84,7 +84,11 @@ impl ZipFileArchive{
             for i in 0..zipf.len(){
                 let mut file = zipf.by_index(i as usize).unwrap();
                 let name = CString::new(file.name().to_string()).unwrap().into_raw() as *const c_char;
-                let file_parent = file.mangled_name().parent().unwrap().to_str().unwrap().to_string();
+                let mut file_parent = file.mangled_name().parent().unwrap().to_str().unwrap().to_string();
+                if file_parent == ""{
+                    file_parent = "\\".to_string();
+                }
+                
                     if current_parent != file_parent{
                         if let Some(list) = self.zipmap.get(&file_parent){
                             currentlist = list.clone();
@@ -99,11 +103,6 @@ impl ZipFileArchive{
                     self.zipmap.insert(current_parent.clone(), currentlist.clone());
                 
     }
-    for i in self.zipmap["publish"].clone(){
-        println!("{:?}", cstr_to_rust_str(i));
-    }
-
-        
     return CppResult{
         isErr: false,
         val: CString::new("").unwrap().into_raw() as  *mut *mut ()

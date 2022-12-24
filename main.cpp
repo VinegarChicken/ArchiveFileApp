@@ -25,9 +25,9 @@ bool MyApp::OnInit()
 MyFrame::MyFrame()
     : wxFrame(nullptr, wxID_ANY, "Hello World")
 {
-    zfa = (ZipFileArchive*) zfa_new("C:\\Users\\m\\Downloads\\ryujinx-1.1.232-win_x64.zip").val;
+    zfa = (ZipFileArchive*) zfa_new("C:\\Users\\m\\Downloads\\wxWidgets-3.2.1.zip").val;
     CppResult zfaLoad = zfa_load(zfa);
-    CppArray zipList = zfa_list_files_in_dir(zfa, "publish");
+    CppArray zipList = zfa_list_files_in_dir(zfa, "\\");
     char** arr = (char**) zipList.ptr;
     for(int i=0; i<zipList.size;i++){
         std::cout<<arr[i];
