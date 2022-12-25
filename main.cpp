@@ -1,6 +1,9 @@
 #include "main.h"
 #include <filesystem>
-
+#include "assets\file_16.xpm"
+#include "assets\file_48.xpm"
+#include "assets\folder_16.xpm"
+#include "assets\folder_48.xpm"
 
 // wxWidgets "Hello World" Program
     
@@ -32,6 +35,10 @@ MyFrame::MyFrame()
     //for(int i=0; i<listall.size;i++){
        // std::cout<<allarr[i]<<std::endl;
     //}
+    imageList.Add(wxBitmap (file48));
+    imageList.Add(wxBitmap (folder48));
+    imageListSmall.Add(wxBitmap(file16));
+    imageListSmall.Add(wxBitmap(folder16));
     CppArray zipList = zfa_list_files_in_dir(zfa, "\\");
     wxMenu *menuFile = new wxMenu;
     menuFile->Append(ID_Hello, "&Hello.../tCtrl-H",
@@ -42,14 +49,18 @@ MyFrame::MyFrame()
     char** tmpArr = (char**) zipList.ptr;
     listCtrl = new wxListCtrl(panel, ID_ARCHIVELIST, {10, 10}, {330, 200}, wxLC_REPORT|wxSIMPLE_BORDER);
     listCtrl->AppendColumn("Name", wxLIST_FORMAT_LEFT, 80);
+    listCtrl->SetImageList(&imageList, wxIMAGE_LIST_NORMAL);
+    listCtrl->SetImageList(&imageListSmall, wxIMAGE_LIST_SMALL);
     for(int i=0; i<zipList.size;i++){
         std::string tmp = tmpArr[i];
         std::filesystem::path fname = tmp;
         if(fname.has_filename()){
             listCtrl->InsertItem(i, fname.filename().c_str());
+            listCtrl->SetItemImage(i, 0);
         }
         else{
             listCtrl->InsertItem(i, fname.parent_path().filename().c_str());
+            listCtrl->SetItemImage(i, 1);
         }
         std::replace(tmp.begin(), tmp.end(), '/', '\\');
         zipArr.push_back(tmp);
@@ -129,9 +140,11 @@ void MyFrame::OnFileClicked(wxCommandEvent& ev){
         std::filesystem::path fname = tmp;
         if(fname.has_filename()){
             listCtrl->InsertItem(i, fname.filename().c_str());
+            listCtrl->SetItemImage(i, 0);
         }
         else{
             listCtrl->InsertItem(i, fname.parent_path().filename().c_str());
+            listCtrl->SetItemImage(i, 1);
         }
         std::replace(tmp.begin(), tmp.end(), '/', '\\');
         zipArr.push_back(tmp);
