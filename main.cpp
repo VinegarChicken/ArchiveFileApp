@@ -1,5 +1,5 @@
 #include "main.h"
-
+#include <filesystem>
 
 
 // wxWidgets "Hello World" Program
@@ -27,28 +27,34 @@ MyFrame::MyFrame()
 {
     zfa = (ZipFileArchive*) zfa_new("C:\\Users\\m\\Downloads\\wxWidgets-3.2.1.zip").val;
     CppResult zfaLoad = zfa_load(zfa);
+   // CppArray listall = zfa_listall(zfa);
+    //char** allarr = (char**) listall.ptr;
+    //for(int i=0; i<listall.size;i++){
+       // std::cout<<allarr[i]<<std::endl;
+    //}
     CppArray zipList = zfa_list_files_in_dir(zfa, "\\");
-    char** arr = (char**) zipList.ptr;
-    for(int i=0; i<zipList.size;i++){
-        std::cout<<arr[i];
-        std::cout<<" ";
-        std::cout<<i<<std::endl;
-    }
     wxMenu *menuFile = new wxMenu;
     menuFile->Append(ID_Hello, "&Hello.../tCtrl-H",
                      "Help string shown in status bar for this menu item");
     menuFile->AppendSeparator();
     menuFile->Append(wxID_EXIT);
     wxPanel* panel = new wxPanel(this);
-   // zipArr = (char**) zipList.ptr;
+    char** tmpArr = (char**) zipList.ptr;
     listCtrl = new wxListCtrl(panel, ID_ARCHIVELIST, {10, 10}, {330, 200}, wxLC_REPORT|wxSIMPLE_BORDER);
     listCtrl->AppendColumn("Name", wxLIST_FORMAT_LEFT, 80);
-   // for(int i=0; i<zipList.size;i++){
-  //     listCtrl->InsertItem(i, zipArr[i]);
-        //std::cout<<arr[i];
-        //std::cout<<" ";
-        //std::cout<<i<<std::endl;
-  //  }
+    for(int i=0; i<zipList.size;i++){
+        std::string tmp = tmpArr[i];
+        std::filesystem::path fname = tmp;
+        if(fname.has_filename()){
+            listCtrl->InsertItem(i, fname.filename().c_str());
+        }
+        else{
+            listCtrl->InsertItem(i, fname.parent_path().filename().c_str());
+        }
+        std::replace(tmp.begin(), tmp.end(), '/', '\\');
+        zipArr.push_back(tmp);
+       // std::cout<<tmp<<std::endl;
+    }
     
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_SELECTED, wxCommandEventHandler(MyFrame::OnFileSelect), nullptr, this);
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxCommandEventHandler(MyFrame::OnFileUnSelect), nullptr, this);
@@ -77,8 +83,7 @@ void MyFrame::OnExit(wxCommandEvent& event)
     Close(true);
 }
 void MyFrame::OnFileSelect(wxCommandEvent& ev){
-    fileId = getSelectedItems()[0];
-    std::cout<<fileId<<std::endl;
+    
 }
 
 void MyFrame::OnFileUnSelect(wxCommandEvent& ev){
@@ -107,26 +112,38 @@ void MyFrame::OnAbout(wxCommandEvent& event)
                  "About Hello World", wxOK | wxICON_INFORMATION);
 }
 void MyFrame::OnFileClicked(wxCommandEvent& ev){
-    /*
-      bool isDir = zfa_isdir(zfa, fileId);
-
-    if(isDir){
-        std::cout<<"Dir selected";
+    std::vector<long> selectedItem = getSelectedItems();
+    if(selectedItem.size() != 0){
+    std::string selected = zipArr[selectedItem[0]];
+   if(selected.back() == '\\'){
+       selected.pop_back();
+   }
+    std::cout<<selected.c_str()<<std::endl;
+    CppArray zipList = zfa_list_files_in_dir(zfa, selected.c_str());
+    if(zipList.size != 0){
         listCtrl->DeleteAllItems();
-        CppArray zipList = zfa_list_files_in_dir(zfa, fileId);
-        zipArr = (char**) zipList.ptr;
+        zipArr.clear();
+        char** tmpArr = (char**) zipList.ptr;
         for(int i=0; i<zipList.size;i++){
-        listCtrl->InsertItem(i, zipArr[i]);
-        //std::cout<<arr[i];
-        //std::cout<<" ";
-        //std::cout<<i<<std::endl;
-    }
+        std::string tmp = tmpArr[i];
+        std::filesystem::path fname = tmp;
+        if(fname.has_filename()){
+            listCtrl->InsertItem(i, fname.filename().c_str());
+        }
+        else{
+            listCtrl->InsertItem(i, fname.parent_path().filename().c_str());
+        }
+        std::replace(tmp.begin(), tmp.end(), '/', '\\');
+        zipArr.push_back(tmp);
+        }
+
     }
     else{
-        std::cout<<"Dir not selected";
+        //std::cout<<"Dir not selected";
     }
-    */
-  
+    }
+    
+
 }
 void MyFrame::OnHello(wxCommandEvent& event)
 {
