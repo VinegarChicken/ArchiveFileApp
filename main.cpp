@@ -46,7 +46,11 @@ MyFrame::MyFrame()
     char** tmpArr = (char**) zipList.ptr;
     size_t* indextmpArr = (size_t*) zipListIndex.ptr;
     listCtrl = new wxListCtrl(panel, ID_ARCHIVELIST, {10, 10}, {1100, 700}, wxLC_REPORT|wxSIMPLE_BORDER);
-    listCtrl->AppendColumn("Name", wxLIST_FORMAT_LEFT, 80);
+    listCtrl->AppendColumn("Name", wxLIST_FORMAT_LEFT, 600);
+    listCtrl->AppendColumn("Date Modified", wxLIST_FORMAT_LEFT, 200);
+    listCtrl->AppendColumn("Type", wxLIST_FORMAT_LEFT, 200);
+    listCtrl->AppendColumn("Size", wxLIST_FORMAT_LEFT, 100);
+
     listCtrl->SetImageList(&imageList, wxIMAGE_LIST_NORMAL);
     listCtrl->SetImageList(&imageListSmall, wxIMAGE_LIST_SMALL);
     for(int i=0; i<zipList.size;i++){
@@ -170,15 +174,15 @@ void MyFrame::OnFileClicked(wxCommandEvent& ev){
 void MyFrame::OnFileRightClicked(wxCommandEvent& event){
     std::vector<long> selectedItem = getSelectedItems();
     wxPoint mousePos = wxGetMousePosition();
-    mousePos.x -= 100;
-    mousePos.y -= 100;
-    if(isListboxActive){
-        delete listBox;
-        isListboxActive = false;
-    }
+    mousePos.x -= 150;
+    mousePos.y -= 150;
     listBox = new wxListBox(listCtrl, wxID_ANY, mousePos);
+    listBox->Bind(wxEVT_LEFT_UP, [&](wxMouseEvent& event) {
+        isListboxActive = false;
+        delete listBox;
+      });
     isListboxActive = true;
-     for (auto item : {"draw", "cut"}){
+     for (auto item : {"extract"}){
         listBox->Append(item);
       listBox->SetSelection(0);
     }
