@@ -21,11 +21,27 @@ unsafe fn cstr_to_rust_str(cstr: *const c_char) -> String{
     CStr::from_ptr(cstr).to_str().unwrap().to_string()
 }
 
+unsafe fn rust_str_to_cstr(s: String) -> *const c_char{
+    CString::new(s).unwrap().into_raw()
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct ZipFileInfo{
+    name: *const c_char,
+    size: u64,
+    date_modified: *const c_char,
+    index: usize,
+    is_dir: bool
+}
+
 struct ZipFileArchive{
     zipfile: zip::ZipArchive<File>,
-    zipmap: HashMap<String, Vec<*const c_char>>,
-    zipmap_index: HashMap<String, Vec<usize>>
+    zipmap: HashMap<String, Vec<ZipFileInfo>>,
+    //zipmap_index: HashMap<String, Vec<usize>>
 }
+
+
 
 #[repr(C)]
 struct CppResult{
@@ -60,7 +76,7 @@ impl ZipFileArchive{
         let mut f = f.unwrap();
         let mut zip = zip::ZipArchive::new(f);
         if let Ok(mut z) = zip {
-            let zfa = ZipFileArchive{zipfile: z, zipmap: HashMap::new(), zipmap_index: HashMap::new()};
+            let zfa = ZipFileArchive{zipfile: z, zipmap: HashMap::new()};
             let x = Box::new(zfa);
             let ptr = Box::into_raw(x) as   *mut ();
             return CppResult{
@@ -80,14 +96,15 @@ impl ZipFileArchive{
         let mut zipf = &mut self.zipfile;
 
         let mut currentdir = String::new();
-        let mut currentlist:Vec<*const c_char> = Vec::new();
-        let mut currentlist_index:Vec<usize> = Vec::new();
+        let mut currentlist = Vec::new();
         let mut current_parent = String::new();
         
             for i in 0..zipf.len(){
                 let mut file = zipf.by_index(i as usize).unwrap();
                 let mut name = file.name().to_string();
-                let name = CString::new(name).unwrap().into_raw() as *const c_char;
+                let name = rust_str_to_cstr(name);
+                let last_modified = rust_str_to_cstr(file.last_modified().to_time().unwrap().to_string());
+                let size = file.size();
                 let mut file_parent = file.mangled_name().parent().unwrap().to_str().unwrap().to_string();
                 if file_parent == ""{
                     file_parent = "\\".to_string();
@@ -101,18 +118,16 @@ impl ZipFileArchive{
                         else{
                             currentlist.clear();
                         }
-                        if let Some(list) = self.zipmap_index.get(&file_parent){
-                            currentlist_index = list.clone();
-                        }
-                        else{
-                            currentlist_index.clear();
-                        }
                         current_parent = file_parent;
                     }
-                    currentlist.push(name);
-                    currentlist_index.push(i);
+                    currentlist.push(ZipFileInfo{
+                        name: name,
+                        size: size,
+                        date_modified: last_modified,
+                        index: i,
+                        is_dir: file.is_dir()
+                    });
                     self.zipmap.insert(current_parent.clone(), currentlist.clone());
-                    self.zipmap_index.insert(current_parent.clone(), currentlist_index.clone());
                 
     }
     return CppResult{
@@ -179,7 +194,7 @@ impl ZipFileArchive{
         unsafe{
             let zipf = &mut self.zipfile;
             let dir = cstr_to_rust_str(dir);
-            let mut files = self.zipmap_index.get(&dir);
+            let mut files = self.zipmap.get(&dir);
             let mut list = Vec::new();
             if let Some(files) = files{
                 list = files.clone();
@@ -187,7 +202,6 @@ impl ZipFileArchive{
             let mut parts = list.to_vec().into_raw_parts();
             CppArray { ptr: parts.0 as *mut *mut (), size: parts.1, cap: parts.2 }
         }
-    
     }
     fn list_all(&mut self) -> CppArray{
         let mut zipf = &mut self.zipfile;

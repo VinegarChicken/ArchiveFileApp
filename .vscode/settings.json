@@ -72,6 +72,7 @@
         "variant": "cpp",
         "codecvt": "cpp",
         "*.xpm": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "charconv": "cpp"
     }
 }

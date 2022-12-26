@@ -9,6 +9,14 @@ struct ZipFileArchive{
 
 };
 
+struct ZipFileInfo{
+    const char* name;
+    size_t size;
+    const char* dateModified;
+    size_t index;
+    bool isDir;
+};
+
 struct CppResult{
     bool isErr;
     void* val;
@@ -48,8 +56,7 @@ private:
     bool isSelectedItem;
     wxListCtrl* listCtrl;
     ZipFileArchive* zfa;
-    std::vector<std::string> zipArr;
-    std::vector<size_t> zipIndex;
+    std::vector<ZipFileInfo> zipArr;
     long fileId;
     std::string currentDir = "\\";
     wxImageList imageList {48, 48};

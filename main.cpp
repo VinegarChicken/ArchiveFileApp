@@ -43,8 +43,7 @@ MyFrame::MyFrame()
     menuFile->AppendSeparator();
     menuFile->Append(wxID_EXIT);
     wxPanel* panel = new wxPanel(this);
-    char** tmpArr = (char**) zipList.ptr;
-    size_t* indextmpArr = (size_t*) zipListIndex.ptr;
+    ZipFileInfo* tmpArr = (ZipFileInfo*) zipList.ptr;
     listCtrl = new wxListCtrl(panel, ID_ARCHIVELIST, {10, 10}, {1100, 700}, wxLC_REPORT|wxSIMPLE_BORDER);
     listCtrl->AppendColumn("Name", wxLIST_FORMAT_LEFT, 600);
     listCtrl->AppendColumn("Date Modified", wxLIST_FORMAT_LEFT, 200);
@@ -54,22 +53,21 @@ MyFrame::MyFrame()
     listCtrl->SetImageList(&imageList, wxIMAGE_LIST_NORMAL);
     listCtrl->SetImageList(&imageListSmall, wxIMAGE_LIST_SMALL);
     for(int i=0; i<zipList.size;i++){
-        std::string tmp = tmpArr[i];
+        ZipFileInfo info = tmpArr[i];
+        std::string tmp = info.name;
         std::filesystem::path fname = tmp;
-        if(fname.has_filename()){
+        if(info.isDir){
+            listCtrl->InsertItem(i, fname.parent_path().filename().c_str());
+            listCtrl->SetItemImage(i, 1);
+            
+        }
+        else{
             listCtrl->InsertItem(i, fname.filename().c_str());
             listCtrl->SetItemImage(i, 0);
         }
-        else{
-            listCtrl->InsertItem(i, fname.parent_path().filename().c_str());
-            listCtrl->SetItemImage(i, 1);
-        }
         std::replace(tmp.begin(), tmp.end(), '/', '\\');
-        zipArr.push_back(tmp);
+        zipArr.push_back(info);
        // std::cout<<tmp<<std::endl;
-    }
-    for(int i=0; i<zipListIndex.size;i++){
-        zipIndex.push_back(indextmpArr[i]);
     }
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_SELECTED, wxCommandEventHandler(MyFrame::OnFileSelect), nullptr, this);
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxCommandEventHandler(MyFrame::OnFileUnSelect), nullptr, this);
@@ -134,37 +132,34 @@ void MyFrame::OnFileClicked(wxCommandEvent& ev){
     std::vector<long> selectedItem = getSelectedItems();
     
     if(selectedItem.size() != 0){
-    std::string selected = zipArr[selectedItem[0]];
+    std::string selected = zipArr[selectedItem[0]].name;
    if(selected.back() == '\\'){
        selected.pop_back();
    }
     //std::cout<<selected.c_str()<<std::endl;
     CppArray zipList = zfa_list_files_in_dir(zfa, selected.c_str());
     if(zipList.size != 0){
-        CppArray zipListIndex = zfa_list_files_in_dir_index(zfa, selected.c_str());
-        size_t* indextmpArr = (size_t*) zipListIndex.ptr;
-        zipIndex.clear();
-        for(int i=0; i<zipListIndex.size;i++){
-        zipIndex.push_back(indextmpArr[i]);
-        }
         listCtrl->DeleteAllItems();
         zipArr.clear();
-        char** tmpArr = (char**) zipList.ptr;
+        ZipFileInfo* tmpArr = (ZipFileInfo*) zipList.ptr;
         for(int i=0; i<zipList.size;i++){
-        std::string tmp = tmpArr[i];
+        ZipFileInfo info = tmpArr[i];
+        std::string tmp = info.name;
         std::filesystem::path fname = tmp;
-        if(fname.has_filename()){
+        if(info.isDir){
+            listCtrl->InsertItem(i, fname.parent_path().filename().c_str());
+            listCtrl->SetItemImage(i, 1);
+            
+        }
+        else{
             listCtrl->InsertItem(i, fname.filename().c_str());
             listCtrl->SetItemImage(i, 0);
         }
-        else{
-            listCtrl->InsertItem(i, fname.parent_path().filename().c_str());
-            listCtrl->SetItemImage(i, 1);
-        }
         std::replace(tmp.begin(), tmp.end(), '/', '\\');
-        zipArr.push_back(tmp);
-        currentDir = selected;
-        }
+        zipArr.push_back(info);
+       // std::cout<<tmp<<std::endl;
+       currentDir = selected;
+    }
 
     }
     }
@@ -186,7 +181,9 @@ void MyFrame::OnFileRightClicked(wxCommandEvent& event){
         listBox->Append(item);
       listBox->SetSelection(0);
     }
-        if(zfa_isdir_index(zfa, zipIndex[selectedItem[0]])){
+    zfa_extract(zfa, zipArr[selectedItem[0]].index, "");
+       /*
+       if(zfa_isdir_index(zfa, zipArr[selectedItem[0]].index)){
             for(auto& i:zipIndex){
                 if (zfa_isdir_index(zfa, i)){
                     continue;
@@ -197,6 +194,8 @@ void MyFrame::OnFileRightClicked(wxCommandEvent& event){
         else{
             zfa_extract(zfa, zipIndex[selectedItem[0]], "");
         }
+    */
+     
 
 }
 
