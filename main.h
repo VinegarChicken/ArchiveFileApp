@@ -43,23 +43,28 @@ private:
     void OnFileSelect(wxCommandEvent& ev);
     void OnFileUnSelect(wxCommandEvent& ev);
     void OnFileClicked(wxCommandEvent& ev);
+    void OnFileRightClicked(wxCommandEvent& ev);
     std::vector<long> getSelectedItems();
     bool isSelectedItem;
     wxListCtrl* listCtrl;
     ZipFileArchive* zfa;
     std::vector<std::string> zipArr;
+    std::vector<size_t> zipIndex;
     long fileId;
     std::string currentDir = "\\";
     wxImageList imageList {48, 48};
     wxImageList imageListSmall {16, 16};
+    wxListBox* listBox;
+    bool isListboxActive;
 };
 
 extern "C" CppResult zfa_new(const char*);
 extern "C" CppResult zfa_load(ZipFileArchive*);
-extern "C" CppResult zfa_extract(ZipFileArchive*, size_t, char**, bool);
-extern "C" CppResult zfa_extract_all(ZipFileArchive*, char**);
+extern "C" CppResult zfa_extract(ZipFileArchive*, size_t, char*);
+extern "C" CppResult zfa_extract_all(ZipFileArchive*, char*);
 extern "C" CppArray zfa_listall(ZipFileArchive*);
 extern "C" CppArray zfa_list_files_in_dir(ZipFileArchive*, const char*);
+extern "C" CppArray zfa_list_files_in_dir_index(ZipFileArchive*, const char*);
 extern "C" bool zfa_isdir(ZipFileArchive*, const char*);
 extern "C" bool zfa_isdir_index(ZipFileArchive*, size_t);
 

@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::ffi::CStr;
 use std::error::Error;
 use std::ffi::CString;
+use std::hash::Hash;
 use std::iter::Zip;
 use std::path::PathBuf;
 use zip::ZipArchive;
@@ -22,17 +23,18 @@ unsafe fn cstr_to_rust_str(cstr: *const c_char) -> String{
 
 struct ZipFileArchive{
     zipfile: zip::ZipArchive<File>,
-    zipmap: HashMap<String, Vec<*const c_char>>
+    zipmap: HashMap<String, Vec<*const c_char>>,
+    zipmap_index: HashMap<String, Vec<usize>>
 }
 
 #[repr(C)]
 struct CppResult{
     isErr: bool,
-    val:   *mut ()
+    val: *mut ()
 }
 #[repr(C)]
 struct CppArray{
-    ptr:   *mut (),
+    ptr: *mut *mut (),
     size: usize,
     cap: usize
 }
@@ -58,7 +60,7 @@ impl ZipFileArchive{
         let mut f = f.unwrap();
         let mut zip = zip::ZipArchive::new(f);
         if let Ok(mut z) = zip {
-            let zfa = ZipFileArchive{zipfile: z, zipmap: HashMap::new()};
+            let zfa = ZipFileArchive{zipfile: z, zipmap: HashMap::new(), zipmap_index: HashMap::new()};
             let x = Box::new(zfa);
             let ptr = Box::into_raw(x) as   *mut ();
             return CppResult{
@@ -79,6 +81,7 @@ impl ZipFileArchive{
 
         let mut currentdir = String::new();
         let mut currentlist:Vec<*const c_char> = Vec::new();
+        let mut currentlist_index:Vec<usize> = Vec::new();
         let mut current_parent = String::new();
         
             for i in 0..zipf.len(){
@@ -98,10 +101,18 @@ impl ZipFileArchive{
                         else{
                             currentlist.clear();
                         }
+                        if let Some(list) = self.zipmap_index.get(&file_parent){
+                            currentlist_index = list.clone();
+                        }
+                        else{
+                            currentlist_index.clear();
+                        }
                         current_parent = file_parent;
                     }
                     currentlist.push(name);
+                    currentlist_index.push(i);
                     self.zipmap.insert(current_parent.clone(), currentlist.clone());
+                    self.zipmap_index.insert(current_parent.clone(), currentlist_index.clone());
                 
     }
     return CppResult{
@@ -109,29 +120,16 @@ impl ZipFileArchive{
         val: CString::new("").unwrap().into_raw() as   *mut ()
     }
 }
-    fn extract(&mut self, index: usize, out_dir: *mut c_char, single_file: bool) -> CppResult{ 
+    fn extract(&mut self, index: usize, out_dir: *mut c_char) -> CppResult{ 
         unsafe{
             let mut zipf = &mut self.zipfile;
             let out_path = PathBuf::from(cstr_to_rust_str(out_dir).replace("/", "\\"));
-            let mut is_dir = false;
-            let mut num = index;
-                while !is_dir{
-                    let mut file = zipf.by_index(num).unwrap();
-                    if file.is_dir() && num == index{
-                        if single_file{
-                            break;
-                        }
-                        num+=1;
-                        continue;
-                    }        
-                    let path = out_path.join(file.mangled_name().file_name().unwrap());
-                    extract_file(&mut file, path);
-                    num+=1;
-                    is_dir = file.is_dir();
-                }
+            let mut file = zipf.by_index(index).unwrap();
+            println!("{}", file.name());
+            let res = "";// extract_file(&mut file, PathBuf::from(cstr_to_rust_str(out_dir)));
                 CppResult{
                     isErr: false,
-                    val: CString::new(out_path.to_str().unwrap()).unwrap().into_raw() as   *mut ()
+                    val: CString::new(res).unwrap().into_raw() as *mut ()
                 }
         }
     }
@@ -142,7 +140,7 @@ impl ZipFileArchive{
             if let Err(e) = zipf.extract(dir_path){
                 return CppResult { isErr: false, val: CString::new(e.to_string()).unwrap().into_raw() as   *mut ()}
             }
-            CppResult { isErr: false, val: 0 as   *mut () }
+            CppResult { isErr: false, val: 0 as *mut () }
         }
     }
     fn is_directory(&mut self, dir: *const c_char) -> bool{
@@ -162,19 +160,32 @@ impl ZipFileArchive{
     }
     fn list_files_in_dir(&mut self, dir: *const c_char) -> CppArray{
         unsafe{
+            let zipf = &mut self.zipfile;
             let dir = cstr_to_rust_str(dir);
           //  println!("{}", dir);
                        // let mut folder = folder.file_name().unwrap().to_str().unwrap();
+            let mut file = zipf.by_name(&dir);
             let mut files = self.zipmap.get(&dir);
             let mut list = Vec::new();
             if let Some(files) = files{
                 list = files.clone();
             }
-            else{
-                println!("'{}' Does not exist", dir);
+            let mut parts = list.to_vec().into_raw_parts();
+            CppArray { ptr: parts.0 as *mut *mut (), size: parts.1, cap: parts.2 }
+        }
+    
+    }
+    fn list_files_in_dir_index(&mut self, dir: *const c_char) -> CppArray{
+        unsafe{
+            let zipf = &mut self.zipfile;
+            let dir = cstr_to_rust_str(dir);
+            let mut files = self.zipmap_index.get(&dir);
+            let mut list = Vec::new();
+            if let Some(files) = files{
+                list = files.clone();
             }
             let mut parts = list.to_vec().into_raw_parts();
-            CppArray { ptr: parts.0 as   *mut (), size: parts.1, cap: parts.2 }
+            CppArray { ptr: parts.0 as *mut *mut (), size: parts.1, cap: parts.2 }
         }
     
     }
@@ -188,7 +199,7 @@ impl ZipFileArchive{
             list.push(name.into_raw());
         }
         let mut parts = list.into_raw_parts();
-        CppArray { ptr: parts.0 as   *mut (), size: parts.1, cap: parts.2 }
+        CppArray { ptr: parts.0 as *mut *mut (), size: parts.1, cap: parts.2 }
     }
 
 }
@@ -215,13 +226,13 @@ unsafe extern "C" fn zfa_listall(zfa: *mut ZipFileArchive) -> CppArray{
 }
 
 #[no_mangle]
-unsafe extern "C" fn zfa_extract(zfa: *mut ZipFileArchive, file: usize, out_dir: *mut *mut c_char, single_file: bool) -> CppResult{
-    (*zfa).extract(file, *out_dir, single_file)
+unsafe extern "C" fn zfa_extract(zfa: *mut ZipFileArchive, file: usize, out_dir: *mut c_char) -> CppResult{
+    (*zfa).extract(file, out_dir)
 }
 
 #[no_mangle]
-unsafe extern "C" fn zfa_extract_all(zfa: *mut ZipFileArchive, out_dir: *mut *mut c_char) -> CppResult{
-    (*zfa).extract_all(*out_dir)
+unsafe extern "C" fn zfa_extract_all(zfa: *mut ZipFileArchive, out_dir: *mut c_char) -> CppResult{
+    (*zfa).extract_all(out_dir)
 }
 
 #[no_mangle]
@@ -230,6 +241,11 @@ unsafe extern "C" fn zfa_isdir(zfa: *mut ZipFileArchive, dir: *const c_char) -> 
 }
 
 #[no_mangle]
-unsafe extern "C" fn zfa_isdir_index(zfa: *mut ZipFileArchive, index: usize) -> bool{
-    (*zfa).is_directory_index(index)
+unsafe extern "C" fn zfa_isdir_index(zfa: *mut ZipFileArchive, dir: usize) -> bool{
+    (*zfa).is_directory_index(dir)
+}
+
+#[no_mangle]
+unsafe extern "C" fn zfa_list_files_in_dir_index(zfa: *mut ZipFileArchive, index: *const c_char) -> CppArray{
+    (*zfa).list_files_in_dir_index(index)
 }

@@ -71,6 +71,7 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "codecvt": "cpp",
-        "*.xpm": "cpp"
+        "*.xpm": "cpp",
+        "filesystem": "cpp"
     }
 }
