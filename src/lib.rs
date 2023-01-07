@@ -10,6 +10,7 @@ use std::ffi::CString;
 use std::hash::Hash;
 use std::iter::Zip;
 use std::path::PathBuf;
+use std::sync::Arc;
 use zip::ZipArchive;
 use zip::read::ZipFile;
 use std::fs::File;
@@ -58,7 +59,7 @@ struct CppArray{
 unsafe fn extract_file(file: &mut ZipFile, out_path: PathBuf) -> String{
     let mut data = Vec::new();
     file.read_to_end(&mut data);
-    if let Err(e) = std::fs::write(out_path.clone(), data){
+    if let Err(e) = std::fs::write(out_path.join(file.mangled_name().file_name().unwrap()), data){
         return format!("Failed to write {} With error: {}", out_path.clone().to_str().unwrap(), e.to_string())
     }
     format!("Wrote {}", out_path.clone().to_str().unwrap())
@@ -140,12 +141,12 @@ impl ZipFileArchive{
             let mut zipf = &mut self.zipfile;
             let out_path = PathBuf::from(cstr_to_rust_str(out_dir).replace("/", "\\"));
             let mut file = zipf.by_index(index).unwrap();
-            let res = extract_file(&mut file, out_path);
-            return CppResult{
-                isErr: false,
-                val: CString::new(res).unwrap().into_raw() as *mut ()
-            }
-            
+           let res = extract_file(&mut file, out_path);
+
+           return CppResult{
+               isErr: false,
+               val: CString::new(res).unwrap().into_raw() as *mut ()
+           }
             
         }
     }

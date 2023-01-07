@@ -112,7 +112,9 @@ MyFrame::MyFrame()
                        saveStringFilter, wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
         saveFileDialog.SetFilename(fname.filename().c_str());
             if(saveFileDialog.ShowModal() != wxID_CANCEL){
-                    zfa_extract(zfa, fileIndex, saveFileDialog.GetPath().c_str());
+                std::string tmp = (const char*) saveFileDialog.GetPath().c_str();
+                std::filesystem::path fpath = tmp;
+                zfa_extract(zfa, fileIndex, fpath.parent_path().u8string().c_str());
                 }
             }
         if(selectedItemListBox == 1){
@@ -123,6 +125,7 @@ MyFrame::MyFrame()
                         if (currentFile.isDir){
                             continue;
                         }
+                        
                         zfa_extract(zfa, currentFile.index, dlg.GetPath().c_str());
                     }
                 }
