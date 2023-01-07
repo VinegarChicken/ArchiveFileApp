@@ -95,6 +95,7 @@ MyFrame::MyFrame()
         long selectedItem = getSelectedItems()[0];
         ZipFileInfo fileInfo = zipArr[selectedItem];
        std::filesystem::path fname = fileInfo.name;
+       std::cout<<fileInfo.name;
         if(selectedItemListBox == 0){
             if(fileInfo.isDir){
                 wxDirDialog dlg(listCtrl, "Choose a directory", "",
@@ -116,7 +117,7 @@ MyFrame::MyFrame()
                        saveStringFilter, wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
         saveFileDialog.SetFilename(fname.filename().c_str());
             if(saveFileDialog.ShowModal() != wxID_CANCEL){
-                    std::cout<<saveFileDialog.GetPath();
+                    zfa_extract(zfa, zipArr[selectedItem].index, saveFileDialog.GetPath().c_str());
                 }
             }
         }
@@ -226,7 +227,6 @@ void MyFrame::OnFileRightClicked(wxListEvent& ev){
     std::vector<long> selectedItem = getSelectedItems();
     listBox->Show();
     listBox->SetPosition(mousePos);
-    zfa_extract(zfa, zipArr[selectedItem[0]].index, "");
        /*
        if(zfa_isdir_index(zfa, zipArr[selectedItem[0]].index)){
             for(auto& i:zipIndex){

@@ -141,7 +141,7 @@ impl ZipFileArchive{
             let out_path = PathBuf::from(cstr_to_rust_str(out_dir).replace("/", "\\"));
             let mut file = zipf.by_index(index).unwrap();
             println!("{}", file.name());
-            let res = "";// extract_file(&mut file, PathBuf::from(cstr_to_rust_str(out_dir)));
+            let res = extract_file(&mut file, PathBuf::from(cstr_to_rust_str(out_dir)));
                 CppResult{
                     isErr: false,
                     val: CString::new(res).unwrap().into_raw() as *mut ()

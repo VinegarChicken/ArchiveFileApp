@@ -70,8 +70,8 @@ private:
 
 extern "C" CppResult zfa_new(const char*);
 extern "C" CppResult zfa_load(ZipFileArchive*);
-extern "C" CppResult zfa_extract(ZipFileArchive*, size_t, char*);
-extern "C" CppResult zfa_extract_all(ZipFileArchive*, char*);
+extern "C" CppResult zfa_extract(ZipFileArchive*, size_t, const char*);
+extern "C" CppResult zfa_extract_all(ZipFileArchive*, const char*);
 extern "C" CppArray zfa_listall(ZipFileArchive*);
 extern "C" CppArray zfa_list_files_in_dir(ZipFileArchive*, const char*);
 extern "C" CppArray zfa_list_files_in_dir_index(ZipFileArchive*, const char*);
