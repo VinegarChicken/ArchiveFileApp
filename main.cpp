@@ -4,12 +4,26 @@
 #include "assets\file_48.xpm"
 #include "assets\folder_16.xpm"
 #include "assets\folder_48.xpm"
+#include <wx/display.h>
 
 // wxWidgets "Hello World" Program
     
 // For compilers that support precompilation, includes "wx/wx.h".
 
- 
+std::string fileSizeString(long double fileSize){
+    std::string fSizeType;
+    std::string fsizeString;
+    if(fileSize > 1000000000){
+        fSizeType = "Mb";
+        fsizeString = (std::to_string((size_t) fileSize / 1000000) + " ");
+    }
+    else{
+        fSizeType = "Kb";
+        fsizeString = (std::to_string((size_t) fileSize / 1000) + " ");
+    }
+    fsizeString.append(" " + fSizeType);
+    return fsizeString;
+}
 enum
 {
     ID_Hello = 1,
@@ -34,7 +48,6 @@ MyFrame::MyFrame()
     imageList.Add(wxBitmap (folder48));
     imageListSmall.Add(wxBitmap(file16));
     imageListSmall.Add(wxBitmap(folder16));
-   
     CppArray zipList = zfa_list_files_in_dir(zfa, "\\");
     CppArray zipListIndex = zfa_list_files_in_dir_index(zfa, "\\");
     wxMenu *menuFile = new wxMenu;
@@ -58,22 +71,63 @@ MyFrame::MyFrame()
         std::filesystem::path fname = tmp;
         if(info.isDir){
             listCtrl->InsertItem(i, fname.parent_path().filename().c_str());
+            listCtrl->SetItem(i, 1, info.dateModified);
+            listCtrl->SetItem(i, 2, "File Folder");
             listCtrl->SetItemImage(i, 1);
-            
         }
         else{
             listCtrl->InsertItem(i, fname.filename().c_str());
+            listCtrl->SetItem(i, 1, info.dateModified);
+            listCtrl->SetItem(i, 2, fname.extension().u8string() + " File");
+            listCtrl->SetItem(i, 3, fileSizeString(info.size));
             listCtrl->SetItemImage(i, 0);
         }
-        std::replace(tmp.begin(), tmp.end(), '/', '\\');
+      //  info.name = tmp.c_str();
         zipArr.push_back(info);
        // std::cout<<tmp<<std::endl;
     }
+    wxArrayString list;
+    list.Add(wxString("extract"));
+    listBox = new wxListBox(listCtrl, wxID_ANY, wxDefaultPosition, wxDefaultSize, list);
+    listBox->Hide();
+        listBox->Bind(wxEVT_LISTBOX_DCLICK, [&](wxCommandEvent& event) {
+        long selectedItemListBox = listBox->GetSelection();
+        long selectedItem = getSelectedItems()[0];
+        ZipFileInfo fileInfo = zipArr[selectedItem];
+       std::filesystem::path fname = fileInfo.name;
+        if(selectedItemListBox == 0){
+            if(fileInfo.isDir){
+                wxDirDialog dlg(listCtrl, "Choose a directory", "",
+                wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+                if(dlg.ShowModal() != wxID_CANCEL){
+                    std::cout<<dlg.GetPath();
+                }
+            }
+            else{
+                std::string file = " file";
+       if(!fname.has_extension()){
+        file.erase(0, 1);
+       }
+       std::string saveString = "Save " + fname.extension().u8string() + file;
+       file.append("s");
+        std::string saveStringFilter = fname.extension().u8string() + file + "(*" + fname.extension().u8string() + ")|*" + fname.extension().u8string();
+        wxFileDialog
+        saveFileDialog(listCtrl, _(saveString), "", "",
+                       saveStringFilter, wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
+        saveFileDialog.SetFilename(fname.filename().c_str());
+            if(saveFileDialog.ShowModal() != wxID_CANCEL){
+                    std::cout<<saveFileDialog.GetPath();
+                }
+            }
+        }
+        listBox->Hide();  
+    });
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_SELECTED, wxCommandEventHandler(MyFrame::OnFileSelect), nullptr, this);
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxCommandEventHandler(MyFrame::OnFileUnSelect), nullptr, this);
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_LIST_ITEM_ACTIVATED, wxCommandEventHandler(MyFrame::OnFileClicked), nullptr, this);
-    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_LIST_ITEM_RIGHT_CLICK, wxCommandEventHandler(MyFrame::OnFileRightClicked), nullptr, this);
-    
+    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_RIGHT_CLICK, wxListEventHandler(MyFrame::OnFileRightClicked), nullptr, this);
+    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_MOTION, wxMouseEventHandler(MyFrame::OnMouseMove), nullptr, this);
+
 
     wxMenu *menuHelp = new wxMenu;
     menuHelp->Append(wxID_ABOUT);
@@ -97,10 +151,7 @@ void MyFrame::OnExit(wxCommandEvent& event)
     Close(true);
 }
 void MyFrame::OnFileSelect(wxCommandEvent& ev){
-    if(isListboxActive){
-        delete listBox;
-        isListboxActive = false;
-    } 
+    listBox->Hide();
 }
 
 void MyFrame::OnFileUnSelect(wxCommandEvent& ev){
@@ -130,13 +181,13 @@ void MyFrame::OnAbout(wxCommandEvent& event)
 }
 void MyFrame::OnFileClicked(wxCommandEvent& ev){
     std::vector<long> selectedItem = getSelectedItems();
-    
     if(selectedItem.size() != 0){
     std::string selected = zipArr[selectedItem[0]].name;
+        std::replace(selected.begin(), selected.end(), '/', '\\');
    if(selected.back() == '\\'){
        selected.pop_back();
    }
-    //std::cout<<selected.c_str()<<std::endl;
+    std::cout<<selected.c_str()<<std::endl;
     CppArray zipList = zfa_list_files_in_dir(zfa, selected.c_str());
     if(zipList.size != 0){
         listCtrl->DeleteAllItems();
@@ -148,15 +199,20 @@ void MyFrame::OnFileClicked(wxCommandEvent& ev){
         std::filesystem::path fname = tmp;
         if(info.isDir){
             listCtrl->InsertItem(i, fname.parent_path().filename().c_str());
+            listCtrl->SetItem(i, 1, info.dateModified);
+            listCtrl->SetItem(i, 2, "File Folder");
             listCtrl->SetItemImage(i, 1);
-            
         }
         else{
             listCtrl->InsertItem(i, fname.filename().c_str());
+            listCtrl->SetItem(i, 1, info.dateModified);
+            listCtrl->SetItem(i, 2, fname.extension().u8string() + " File");
+            listCtrl->SetItem(i, 3, fileSizeString(info.size));
             listCtrl->SetItemImage(i, 0);
         }
-        std::replace(tmp.begin(), tmp.end(), '/', '\\');
+      //  info.name = tmp.c_str();
         zipArr.push_back(info);
+       // std::cout<<tmp<<std::endl;
        // std::cout<<tmp<<std::endl;
        currentDir = selected;
     }
@@ -166,21 +222,10 @@ void MyFrame::OnFileClicked(wxCommandEvent& ev){
     
 }
 
-void MyFrame::OnFileRightClicked(wxCommandEvent& event){
+void MyFrame::OnFileRightClicked(wxListEvent& ev){
     std::vector<long> selectedItem = getSelectedItems();
-    wxPoint mousePos = wxGetMousePosition();
-    mousePos.x -= 150;
-    mousePos.y -= 150;
-    listBox = new wxListBox(listCtrl, wxID_ANY, mousePos);
-    listBox->Bind(wxEVT_LEFT_UP, [&](wxMouseEvent& event) {
-        isListboxActive = false;
-        delete listBox;
-      });
-    isListboxActive = true;
-     for (auto item : {"extract"}){
-        listBox->Append(item);
-      listBox->SetSelection(0);
-    }
+    listBox->Show();
+    listBox->SetPosition(mousePos);
     zfa_extract(zfa, zipArr[selectedItem[0]].index, "");
        /*
        if(zfa_isdir_index(zfa, zipArr[selectedItem[0]].index)){
@@ -197,6 +242,11 @@ void MyFrame::OnFileRightClicked(wxCommandEvent& event){
     */
      
 
+}
+
+void MyFrame::OnMouseMove(wxMouseEvent& ev){
+    mousePos.x = ev.GetX();
+    mousePos.y = ev.GetY();
 }
 
 void MyFrame::OnHello(wxCommandEvent& event)

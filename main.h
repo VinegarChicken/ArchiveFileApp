@@ -51,8 +51,10 @@ private:
     void OnFileSelect(wxCommandEvent& ev);
     void OnFileUnSelect(wxCommandEvent& ev);
     void OnFileClicked(wxCommandEvent& ev);
-    void OnFileRightClicked(wxCommandEvent& ev);
+    void OnMouseMove(wxMouseEvent& ev);
+    void OnFileRightClicked(wxListEvent& ev);
     std::vector<long> getSelectedItems();
+    wxPoint mousePos;
     bool isSelectedItem;
     wxListCtrl* listCtrl;
     ZipFileArchive* zfa;
@@ -61,7 +63,8 @@ private:
     std::string currentDir = "\\";
     wxImageList imageList {48, 48};
     wxImageList imageListSmall {16, 16};
-    wxListBox* listBox;
+    wxListBox* listBox = nullptr;
+
     bool isListboxActive;
 };
 
