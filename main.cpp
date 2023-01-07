@@ -5,6 +5,7 @@
 #include "assets\folder_16.xpm"
 #include "assets\folder_48.xpm"
 #include <wx/display.h>
+#include <io.h>
 
 // wxWidgets "Hello World" Program
     
@@ -87,24 +88,18 @@ MyFrame::MyFrame()
        // std::cout<<tmp<<std::endl;
     }
     wxArrayString list;
-    list.Add(wxString("extract"));
+    list.Add(wxString("Extract File..."));
+    list.Add(wxString("Extract Current Directory..."));
     listBox = new wxListBox(listCtrl, wxID_ANY, wxDefaultPosition, wxDefaultSize, list);
     listBox->Hide();
         listBox->Bind(wxEVT_LISTBOX_DCLICK, [&](wxCommandEvent& event) {
         long selectedItemListBox = listBox->GetSelection();
         long selectedItem = getSelectedItems()[0];
         ZipFileInfo fileInfo = zipArr[selectedItem];
+        size_t fileIndex = fileInfo.index;
        std::filesystem::path fname = fileInfo.name;
-       std::cout<<fileInfo.name;
+      // std::cout<<fileInfo.name;
         if(selectedItemListBox == 0){
-            if(fileInfo.isDir){
-                wxDirDialog dlg(listCtrl, "Choose a directory", "",
-                wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
-                if(dlg.ShowModal() != wxID_CANCEL){
-                    std::cout<<dlg.GetPath();
-                }
-            }
-            else{
                 std::string file = " file";
        if(!fname.has_extension()){
         file.erase(0, 1);
@@ -117,9 +112,20 @@ MyFrame::MyFrame()
                        saveStringFilter, wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
         saveFileDialog.SetFilename(fname.filename().c_str());
             if(saveFileDialog.ShowModal() != wxID_CANCEL){
-                    zfa_extract(zfa, zipArr[selectedItem].index, saveFileDialog.GetPath().c_str());
+                    zfa_extract(zfa, fileIndex, saveFileDialog.GetPath().c_str());
                 }
             }
+        if(selectedItemListBox == 1){
+            wxDirDialog dlg(listCtrl, "Choose a directory", "",
+                wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+                if(dlg.ShowModal() != wxID_CANCEL){
+                    for(auto& currentFile: zipArr){
+                        if (currentFile.isDir){
+                            continue;
+                        }
+                        zfa_extract(zfa, currentFile.index, dlg.GetPath().c_str());
+                    }
+                }
         }
         listBox->Hide();  
     });
@@ -224,9 +230,12 @@ void MyFrame::OnFileClicked(wxCommandEvent& ev){
 }
 
 void MyFrame::OnFileRightClicked(wxListEvent& ev){
-    std::vector<long> selectedItem = getSelectedItems();
-    listBox->Show();
-    listBox->SetPosition(mousePos);
+    long selectedItem = getSelectedItems()[0];
+    if(!zipArr[selectedItem].isDir){
+        listBox->Show();
+        listBox->SetPosition(mousePos);
+    }
+    
        /*
        if(zfa_isdir_index(zfa, zipArr[selectedItem[0]].index)){
             for(auto& i:zipIndex){
