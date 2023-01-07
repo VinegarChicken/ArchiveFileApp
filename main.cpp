@@ -96,25 +96,11 @@ MyFrame::MyFrame()
         long selectedItemListBox = listBox->GetSelection();
         long selectedItem = getSelectedItems()[0];
         ZipFileInfo fileInfo = zipArr[selectedItem];
-        size_t fileIndex = fileInfo.index;
-       std::filesystem::path fname = fileInfo.name;
-      // std::cout<<fileInfo.name;
         if(selectedItemListBox == 0){
-                std::string file = " file";
-       if(!fname.has_extension()){
-        file.erase(0, 1);
-       }
-       std::string saveString = "Save " + fname.extension().u8string() + file;
-       file.append("s");
-        std::string saveStringFilter = fname.extension().u8string() + file + "(*" + fname.extension().u8string() + ")|*" + fname.extension().u8string();
-        wxFileDialog
-        saveFileDialog(listCtrl, _(saveString), "", "",
-                       saveStringFilter, wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
-        saveFileDialog.SetFilename(fname.filename().c_str());
-            if(saveFileDialog.ShowModal() != wxID_CANCEL){
-                std::string tmp = (const char*) saveFileDialog.GetPath().c_str();
-                std::filesystem::path fpath = tmp;
-                zfa_extract(zfa, fileIndex, fpath.parent_path().u8string().c_str());
+                wxDirDialog dlg(listCtrl, "Choose a directory", "",
+                wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+                if(dlg.ShowModal() != wxID_CANCEL){
+                    zfa_extract(zfa, fileInfo.index, dlg.GetPath().c_str());
                 }
             }
         if(selectedItemListBox == 1){
