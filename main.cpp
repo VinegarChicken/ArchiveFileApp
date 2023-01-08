@@ -7,7 +7,7 @@
 #include <wx/display.h>
 #include <io.h>
 
-// wxWidgets "Hello World" Program
+// wxWidgets "Open World" Program
     
 // For compilers that support precompilation, includes "wx/wx.h".
 
@@ -27,7 +27,7 @@ std::string fileSizeString(long double fileSize){
 }
 enum
 {
-    ID_Hello = 1,
+    ID_Open = 1,
     ID_ARCHIVELIST = 2
 };
  
@@ -43,29 +43,69 @@ bool MyApp::OnInit()
 MyFrame::MyFrame()
     : wxFrame(nullptr, wxID_ANY, "Joel Zip File Extract", wxDefaultPosition, wxSize(1200, 800))
 {
-    zfa = (ZipFileArchive*) zfa_new("C:\\Users\\m\\Downloads\\wxWidgets-3.2.1.zip").val;
-    CppResult zfaLoad = zfa_load(zfa);
+        wxMenu *menuFile = new wxMenu;
+    menuFile->Append(wxID_OPEN, "&Open.../tCtrl-O",
+                     "Open a zip file.");
+    menuFile->AppendSeparator();
+    menuFile->Append(wxID_EXIT);
+    wxPanel* panel = new wxPanel(this);
     imageList.Add(wxBitmap (file48));
     imageList.Add(wxBitmap (folder48));
     imageListSmall.Add(wxBitmap(file16));
     imageListSmall.Add(wxBitmap(folder16));
-    CppArray zipList = zfa_list_files_in_dir(zfa, "\\");
-    CppArray zipListIndex = zfa_list_files_in_dir_index(zfa, "\\");
-    wxMenu *menuFile = new wxMenu;
-    menuFile->Append(ID_Hello, "&Hello.../tCtrl-H",
-                     "Help string shown in status bar for this menu item");
-    menuFile->AppendSeparator();
-    menuFile->Append(wxID_EXIT);
-    wxPanel* panel = new wxPanel(this);
-    ZipFileInfo* tmpArr = (ZipFileInfo*) zipList.ptr;
     listCtrl = new wxListCtrl(panel, ID_ARCHIVELIST, {10, 10}, {1100, 700}, wxLC_REPORT|wxSIMPLE_BORDER);
     listCtrl->AppendColumn("Name", wxLIST_FORMAT_LEFT, 600);
     listCtrl->AppendColumn("Date Modified", wxLIST_FORMAT_LEFT, 200);
     listCtrl->AppendColumn("Type", wxLIST_FORMAT_LEFT, 200);
     listCtrl->AppendColumn("Size", wxLIST_FORMAT_LEFT, 100);
-
     listCtrl->SetImageList(&imageList, wxIMAGE_LIST_NORMAL);
     listCtrl->SetImageList(&imageListSmall, wxIMAGE_LIST_SMALL);
+    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_SELECTED, wxCommandEventHandler(MyFrame::OnFileSelect), nullptr, this);
+    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxCommandEventHandler(MyFrame::OnFileUnSelect), nullptr, this);
+    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_LIST_ITEM_ACTIVATED, wxCommandEventHandler(MyFrame::OnFileClicked), nullptr, this);
+    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_RIGHT_CLICK, wxListEventHandler(MyFrame::OnFileRightClicked), nullptr, this);
+    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_MOTION, wxMouseEventHandler(MyFrame::OnMouseMove), nullptr, this);
+
+
+    wxMenu *menuHelp = new wxMenu;
+    menuHelp->Append(wxID_ABOUT);
+ 
+    wxMenuBar *menuBar = new wxMenuBar;
+    menuBar->Append(menuFile, "&File");
+    menuBar->Append(menuHelp, "&Help");
+ 
+    SetMenuBar( menuBar );
+ 
+    CreateStatusBar();
+    SetStatusText("Welcome to wxWidgets!");
+ 
+    Bind(wxEVT_MENU, &MyFrame::OnOpenFileClicked, this, wxID_OPEN);
+    Bind(wxEVT_MENU, &MyFrame::OnAbout, this, wxID_ABOUT);
+    Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
+}
+
+void MyFrame::OnOpenFileClicked(wxCommandEvent& event)
+{
+     wxFileDialog
+        openFileDialog(this, _("Open Zip file"), "", "",
+                       "Zip files (*.zip)|*.zip", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
+    if(openFileDialog.ShowModal() == wxID_CANCEL){
+        return;
+    }
+    if(listCtrl->GetItemCount() != 0){
+        listCtrl->DeleteAllItems();
+        zipArr.clear();
+    }
+    zfa = (ZipFileArchive*) zfa_new(openFileDialog.GetPath().c_str()).val;
+    CppResult zfaLoad = zfa_load(zfa);
+    
+    CppArray zipList = zfa_list_files_in_dir(zfa, "\\");
+    CppArray zipListIndex = zfa_list_files_in_dir_index(zfa, "\\");
+
+    ZipFileInfo* tmpArr = (ZipFileInfo*) zipList.ptr;
+    
+
+   
     for(int i=0; i<zipList.size;i++){
         ZipFileInfo info = tmpArr[i];
         std::string tmp = info.name;
@@ -118,30 +158,8 @@ MyFrame::MyFrame()
         }
         listBox->Hide();  
     });
-    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_SELECTED, wxCommandEventHandler(MyFrame::OnFileSelect), nullptr, this);
-    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_DESELECTED, wxCommandEventHandler(MyFrame::OnFileUnSelect), nullptr, this);
-    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_LIST_ITEM_ACTIVATED, wxCommandEventHandler(MyFrame::OnFileClicked), nullptr, this);
-    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_COMMAND_LIST_ITEM_RIGHT_CLICK, wxListEventHandler(MyFrame::OnFileRightClicked), nullptr, this);
-    listCtrl->Connect(ID_ARCHIVELIST, wxEVT_MOTION, wxMouseEventHandler(MyFrame::OnMouseMove), nullptr, this);
-
-
-    wxMenu *menuHelp = new wxMenu;
-    menuHelp->Append(wxID_ABOUT);
- 
-    wxMenuBar *menuBar = new wxMenuBar;
-    menuBar->Append(menuFile, "&File");
-    menuBar->Append(menuHelp, "&Help");
- 
-    SetMenuBar( menuBar );
- 
-    CreateStatusBar();
-    SetStatusText("Welcome to wxWidgets!");
- 
-    Bind(wxEVT_MENU, &MyFrame::OnHello, this, ID_Hello);
-    Bind(wxEVT_MENU, &MyFrame::OnAbout, this, wxID_ABOUT);
-    Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
 }
- 
+
 void MyFrame::OnExit(wxCommandEvent& event)
 {
     Close(true);
@@ -172,8 +190,8 @@ return items;
 
 void MyFrame::OnAbout(wxCommandEvent& event)
 {
-    wxMessageBox("This is a wxWidgets Hello World example",
-                 "About Hello World", wxOK | wxICON_INFORMATION);
+    wxMessageBox("This is a wxWidgets Open World example",
+                 "About Open World", wxOK | wxICON_INFORMATION);
 }
 void MyFrame::OnFileClicked(wxCommandEvent& ev){
     std::vector<long> selectedItem = getSelectedItems();
@@ -245,9 +263,4 @@ void MyFrame::OnFileRightClicked(wxListEvent& ev){
 void MyFrame::OnMouseMove(wxMouseEvent& ev){
     mousePos.x = ev.GetX();
     mousePos.y = ev.GetY();
-}
-
-void MyFrame::OnHello(wxCommandEvent& event)
-{
-    wxLogMessage("Hello world from wxWidgets!");
 }

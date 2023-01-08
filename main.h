@@ -4,6 +4,9 @@
 #include <wx/listctrl.h>
 #include <wx/wxprec.h>
 #include <wx/bitmap.h>
+#include <wx/filepicker.h>
+#include <wx/dirctrl.h>
+#include <wx/stdpaths.h>
 
 struct ZipFileArchive{
 
@@ -53,11 +56,14 @@ private:
     void OnFileClicked(wxCommandEvent& ev);
     void OnMouseMove(wxMouseEvent& ev);
     void OnFileRightClicked(wxListEvent& ev);
+    void OnOpenFileClicked(wxCommandEvent& ev);
     std::vector<long> getSelectedItems();
     wxPoint mousePos;
     bool isSelectedItem;
     wxListCtrl* listCtrl;
     ZipFileArchive* zfa;
+    wxGenericDirCtrl* dirCtrl;
+    wxPanel* panel;
     std::vector<ZipFileInfo> zipArr;
     long fileId;
     std::string currentDir = "\\";
