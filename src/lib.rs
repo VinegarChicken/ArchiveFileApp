@@ -179,6 +179,7 @@ impl ZipFileArchive{
         unsafe{
             let zipf = &mut self.zipfile;
             let dir = cstr_to_rust_str(dir);
+            println!("{}", dir);
           //  println!("{}", dir);
                        // let mut folder = folder.file_name().unwrap().to_str().unwrap();
             let mut file = zipf.by_name(&dir);
