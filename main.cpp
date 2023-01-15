@@ -27,8 +27,9 @@ std::string fileSizeString(long double fileSize){
 }
 enum
 {
-    ID_Open = 1,
-    ID_ARCHIVELIST = 2
+    ID_Open,
+    ID_ARCHIVELIST,
+    ID_BACKBUTTON
 };
  
 wxIMPLEMENT_APP(MyApp);
@@ -43,11 +44,13 @@ bool MyApp::OnInit()
 MyFrame::MyFrame()
     : wxFrame(nullptr, wxID_ANY, "Joel Zip File Extract", wxDefaultPosition, wxSize(1200, 800))
 {
-        wxMenu *menuFile = new wxMenu;
-    menuFile->Append(wxID_OPEN, "&Open.../tCtrl-O",
-                     "Open a zip file.");
-    menuFile->AppendSeparator();
-    menuFile->Append(wxID_EXIT);
+    toolBar = CreateToolBar();
+    toolBar->AddTool(wxID_OPEN, "&Open...", wxArtProvider::GetBitmap(wxART_FILE_OPEN, wxART_TOOLBAR));
+    toolBar->AddTool(ID_BACKBUTTON, "", wxArtProvider::GetBitmap(wxART_GO_BACK, wxART_TOOLBAR));
+    toolBar->EnableTool(ID_BACKBUTTON, false);
+    //wxMenuItem* item = new wxMenuItem(menuFile);
+    //wxBitmap* bitmap = new wxBitmap(backArrow16);
+    //item->SetBitmap(wxBitmapBundle(backArrow16));
     wxPanel* panel = new wxPanel(this);
     textCtrl = new wxTextCtrl(panel, wxID_ANY, "Enter Path", {500, 0}, {200, 20}, wxTE_PROCESS_ENTER);
     textCtrl->Bind(wxEVT_TEXT_ENTER, [&](wxCommandEvent& event) {
@@ -72,23 +75,33 @@ MyFrame::MyFrame()
     listCtrl->Connect(ID_ARCHIVELIST, wxEVT_MOTION, wxMouseEventHandler(MyFrame::OnMouseMove), nullptr, this);
 
 
-    wxMenu *menuHelp = new wxMenu;
-    menuHelp->Append(wxID_ABOUT);
+   // wxMenu *menuHelp = new wxMenu;
+   // menuHelp->Append(wxID_ABOUT);
  
-    wxMenuBar *menuBar = new wxMenuBar;
-    menuBar->Append(menuFile, "&File");
-    menuBar->Append(menuHelp, "&Help");
+   // wxMenuBar *menuBar = new wxMenuBar;
+   // menuBar->Append(menuFile, "&File");
+   // menuBar->Append(menuHelp, "&Help");
  
-    SetMenuBar( menuBar );
- 
+   // SetMenuBar( menuBar );
+    SetToolBar(toolBar);
+    toolBar->Realize();
     CreateStatusBar();
     SetStatusText("Welcome to wxWidgets!");
  
     Bind(wxEVT_MENU, &MyFrame::OnOpenFileClicked, this, wxID_OPEN);
+    Bind(wxEVT_MENU, &MyFrame::OnBackButtonPressed, this, ID_BACKBUTTON);
     Bind(wxEVT_MENU, &MyFrame::OnAbout, this, wxID_ABOUT);
     Bind(wxEVT_MENU, &MyFrame::OnExit, this, wxID_EXIT);
 }
 
+void MyFrame::OnBackButtonPressed(wxCommandEvent& event)
+{
+    const char* name = textCtrl->GetValue().c_str();
+    std::filesystem::path fpath = name;
+    fpath = fpath.parent_path().parent_path();
+    textCtrl->SetLabelText(fpath.string());
+    SetCurrentDirectory(fpath.string());
+}
 void MyFrame::OnOpenFileClicked(wxCommandEvent& event)
 {
      wxFileDialog
@@ -101,6 +114,7 @@ void MyFrame::OnOpenFileClicked(wxCommandEvent& event)
         listCtrl->DeleteAllItems();
         zipArr.clear();
     }
+    toolBar->EnableTool(ID_BACKBUTTON, true);
     zfa = (ZipFileArchive*) zfa_new(openFileDialog.GetPath().c_str()).val;
     CppResult zfaLoad = zfa_load(zfa);
     
@@ -123,7 +137,7 @@ void MyFrame::OnOpenFileClicked(wxCommandEvent& event)
         else{
             listCtrl->InsertItem(i, fname.filename().c_str());
             listCtrl->SetItem(i, 1, info.dateModified);
-            listCtrl->SetItem(i, 2, fname.extension().u8string() + " File");
+            listCtrl->SetItem(i, 2, fname.extension().string() + " File");
             listCtrl->SetItem(i, 3, fileSizeString(info.size));
             listCtrl->SetItemImage(i, 0);
         }
@@ -131,6 +145,7 @@ void MyFrame::OnOpenFileClicked(wxCommandEvent& event)
         zipArr.push_back(info);
        // std::cout<<tmp<<std::endl;
     }
+
     wxArrayString list;
     list.Add(wxString("Extract File..."));
     list.Add(wxString("Extract Current Directory..."));
@@ -195,9 +210,7 @@ void MyFrame::OnAbout(wxCommandEvent& event)
     wxMessageBox("This is a wxWidgets Open World example",
                  "About Open World", wxOK | wxICON_INFORMATION);
 }
-void MyFrame::OnTextCtrlEnterPressed(wxCommandEvent& ev){
-    SetCurrentDirectory((const char*) textCtrl->GetLabelText().c_str());
-}
+
 void MyFrame::OnFileClicked(wxCommandEvent& ev){
     std::vector<long> selectedItem = getSelectedItems();
     if(selectedItem.size() != 0){
@@ -238,7 +251,7 @@ void MyFrame::SetCurrentDirectory(std::string path){
         else{
             listCtrl->InsertItem(i, fname.filename().c_str());
             listCtrl->SetItem(i, 1, info.dateModified);
-            listCtrl->SetItem(i, 2, fname.extension().u8string() + " File");
+            listCtrl->SetItem(i, 2, fname.extension().string() + " File");
             listCtrl->SetItem(i, 3, fileSizeString(info.size));
             listCtrl->SetItemImage(i, 0);
         }

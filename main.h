@@ -7,6 +7,7 @@
 #include <wx/filepicker.h>
 #include <wx/dirctrl.h>
 #include <wx/stdpaths.h>
+#include <wx/artprov.h>
 
 struct ZipFileArchive{
 
@@ -58,10 +59,12 @@ private:
     void OnFileRightClicked(wxListEvent& ev);
     void OnOpenFileClicked(wxCommandEvent& ev);
     void OnTextCtrlEnterPressed(wxCommandEvent& ev);
+    void OnBackButtonPressed(wxCommandEvent& ev);
     std::vector<long> getSelectedItems();
     wxPoint mousePos;
     void SetCurrentDirectory(std::string path);
     bool isSelectedItem;
+    wxToolBar* toolBar;
     wxListCtrl* listCtrl;
     ZipFileArchive* zfa;
     wxGenericDirCtrl* dirCtrl;
